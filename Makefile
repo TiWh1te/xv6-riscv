@@ -159,6 +159,7 @@ UPROGS=\
 	$U/_cowtest\
 	$U/_lazytests\
 	$U/_pingpong\
+	$U/_bdprint\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

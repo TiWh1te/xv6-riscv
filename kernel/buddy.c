@@ -10,11 +10,14 @@
 
 static int nsizes;  // the number of entries in bd_sizes array
 
+void bd_print(void);
+
 #define LEAF_SIZE 16          // The smallest block size
 #define MAXSIZE (nsizes - 1)  // Largest index in bd_sizes array
 #define BLK_SIZE(k) ((1L << (k)) * LEAF_SIZE)  // Size of block at size k
 #define HEAP_SIZE BLK_SIZE(MAXSIZE)
 #define NBLK(k) (1 << (MAXSIZE - k))  // Number of block at size k
+#define BIT_ARRAY_SIZE(nbits) (((nbits) + 7) / 8)
 #define ROUNDUP(n, sz) \
   (((((n)-1) / (sz)) + 1) * (sz))  // Round up to the next multiple of sz
 
@@ -79,6 +82,13 @@ void bd_print_vector(char *vector, int len) {
         printf(" [%d, %d)", lb, len);
     }
     printf("\n");
+}
+
+uint64
+sys_bdprint(void)
+{
+    bd_print();
+    return 0; 
 }
 
 // Print buddy's data structures
@@ -289,7 +299,7 @@ int bd_mark_unavailable(void *end, void *left) {
 // Initialize the buddy allocator: it manages memory from [base, end).
 void bd_init(void *base, void *end) {
     char *p = (char *) ROUNDUP((uint64) base, LEAF_SIZE);
-    int sz;
+    
 
     initlock(&lock, "buddy");
     bd_base = (void *) p;
@@ -307,20 +317,18 @@ void bd_init(void *base, void *end) {
 
     // initialize free list and allocate the alloc array for each size k
     for (int k = 0; k < nsizes; k++) {
-        lst_init(&bd_sizes[k].free);
-        sz = sizeof(char) * ROUNDUP(NBLK(k) / 2, 8) / 8;
-        bd_sizes[k].alloc = p;
-        memset(bd_sizes[k].alloc, 0, sz);
-        p += sz;
+    lst_init(&bd_sizes[k].free);
+
+    bd_sizes[k].alloc = p;
+    memset(bd_sizes[k].alloc, 0, BIT_ARRAY_SIZE(NBLK(k)/2));
+    p += BIT_ARRAY_SIZE(NBLK(k)/2);
     }
 
-    // allocate the split array for each size k, except for k = 0, since
-    // we will not split blocks of size k = 0, the smallest size.
+    // allocate the split array for each size k, except for k = 0
     for (int k = 1; k < nsizes; k++) {
-        sz = sizeof(char) * (ROUNDUP(NBLK(k), 8)) / 8;
         bd_sizes[k].split = p;
-        memset(bd_sizes[k].split, 0, sz);
-        p += sz;
+        memset(bd_sizes[k].split, 0, BIT_ARRAY_SIZE(NBLK(k)));
+        p += BIT_ARRAY_SIZE(NBLK(k));
     }
     p = (char *) ROUNDUP((uint64) p, LEAF_SIZE);
 

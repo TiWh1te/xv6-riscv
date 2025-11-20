@@ -2,42 +2,48 @@
 #include "user.h"
 
 int main() {
-    int p[2];
+    int p2c[2]; 
+    int c2p[2]; 
     char buf[5];
 
-    if (pipe(p) < 0) {
+
+    if (pipe(p2c) < 0 || pipe(c2p) < 0) {
         printf("pingpong: ошибка создания pipe\n");
         exit(1);
     }
 
     if (fork() == 0) {
-        // Дочерний процесс
-        int n = read(p[0], buf, 4);
-        if (n == 0) {
-            printf("%d: pipe закрыт, данных нет\n", getpid());
-        } else {
-            buf[4] = '\0';
-            printf("%d: получил %s\n", getpid(), buf);
-            write(p[1], "pong", 4);
-        }
-        close(p[0]);
-        close(p[1]);
+      
+        close(p2c[1]);
+        close(c2p[0]);
+
+
+        read(p2c[0], buf, 4);
+        buf[4] = '\0';
+        printf("%d: получил %s\n", getpid(), buf);
+
+
+        write(c2p[1], "pong", 4);
+
+        close(p2c[0]);
+        close(c2p[1]);
         exit(0);
     } else {
-        // Родительский процесс
-        if (write(p[1], "ping", 4) < 0) {
-            printf("%d: ошибка записи в закрытый pipe\n", getpid());
-        }
+
+        close(p2c[0]); 
+        close(c2p[1]); 
+
+
+        write(p2c[1], "ping", 4);
+
+
+        read(c2p[0], buf, 4);
+        buf[4] = '\0';
+        printf("%d: получил %s\n", getpid(), buf);
+
+        close(p2c[1]);
+        close(c2p[0]);
         wait(0);
-        close(p[1]);
-        int n = read(p[0], buf, 4);
-        if (n == 0) {
-            printf("%d: pipe закрыт, данных нет\n", getpid());
-        } else {
-            buf[4] = '\0';
-            printf("%d: получил %s\n", getpid(), buf);
-        }        
-        close(p[0]);
         exit(0);
     }
 }

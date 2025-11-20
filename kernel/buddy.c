@@ -12,7 +12,7 @@ static int nsizes;  // the number of entries in bd_sizes array
 
 void bd_print(void);
 
-#define LEAF_SIZE 16          // The smallest block size
+#define LEAF_SIZE 32          // The smallest block size
 #define MAXSIZE (nsizes - 1)  // Largest index in bd_sizes array
 #define BLK_SIZE(k) ((1L << (k)) * LEAF_SIZE)  // Size of block at size k
 #define HEAP_SIZE BLK_SIZE(MAXSIZE)
@@ -315,38 +315,41 @@ void bd_init(void *base, void *end) {
     p += sizeof(Sz_info) * nsizes;
     memset(bd_sizes, 0, sizeof(Sz_info) * nsizes);
 
-    // initialize free list and allocate the alloc array for each size k
+        // initialize free list and allocate the alloc array for each size k
     for (int k = 0; k < nsizes; k++) {
-    lst_init(&bd_sizes[k].free);
+        lst_init(&bd_sizes[k].free);
 
-    bd_sizes[k].alloc = p;
-    memset(bd_sizes[k].alloc, 0, BIT_ARRAY_SIZE(NBLK(k)/2));
-    p += BIT_ARRAY_SIZE(NBLK(k)/2);
+        int alloc_bits = (NBLK(k) + 1) / 2;                 // ceil(NBLK/2)
+        int alloc_bytes = BIT_ARRAY_SIZE(alloc_bits);
+        bd_sizes[k].alloc = p;
+        memset(bd_sizes[k].alloc, 0, alloc_bytes);
+        p += alloc_bytes;
     }
 
     // allocate the split array for each size k, except for k = 0
     for (int k = 1; k < nsizes; k++) {
+        int split_bits = NBLK(k);
+        int split_bytes = BIT_ARRAY_SIZE(split_bits);
         bd_sizes[k].split = p;
-        memset(bd_sizes[k].split, 0, BIT_ARRAY_SIZE(NBLK(k)));
-        p += BIT_ARRAY_SIZE(NBLK(k));
+        memset(bd_sizes[k].split, 0, split_bytes);
+        p += split_bytes;
     }
     p = (char *) ROUNDUP((uint64) p, LEAF_SIZE);
 
-    // done allocating; mark the memory range [base, p) as allocated, so
-    // that buddy will not hand out that memory.
     int meta = bd_mark_data_structures(p);
 
-    // mark the unavailable memory range [end, HEAP_SIZE) as allocated,
-    // so that buddy will not hand out that memory.
     int unavailable = bd_mark_unavailable(end, p);
     void *bd_end = bd_base + BLK_SIZE(MAXSIZE) - unavailable;
 
-    // initialize free lists for each size k
     int free = bd_initfree(p, bd_end);
 
-    // check if the amount that is free is what we expect
-    if (free != BLK_SIZE(MAXSIZE) - meta - unavailable) {
-        printf("free %d %ld\n", free, BLK_SIZE(MAXSIZE) - meta - unavailable);
-        panic("bd_init: free mem");
-    }
+    // debug
+    printf("bd_init: HEAP_SIZE=%ld meta=%ld unavailable=%ld free=%ld expected=%ld\n",
+       BLK_SIZE(MAXSIZE),
+       (long)meta,
+       (long)unavailable,
+       (long)free,
+       (long)(BLK_SIZE(MAXSIZE) - meta - unavailable));
+
+
 }

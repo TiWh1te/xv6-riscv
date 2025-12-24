@@ -201,5 +201,5 @@ int            lst_empty(struct list*);
 void           bd_init(void*,void*);
 void           bd_free(void*);
 void           *bd_malloc(uint64);
-
+uint64         sys_bdprint(void);
 

@@ -1,5 +1,9 @@
 struct stat;
 
+
+typedef unsigned int   uint;
+typedef unsigned long  uint64;
+
 // system calls
 int fork(void);
 int exit(int) __attribute__((noreturn));
@@ -22,6 +26,11 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int uptime(void);
+void dump(void);
+uint64 dump2(int pid, int register_num, uint64 *return_value);
+uint64 bdprint(void);
+
 
 // ulib.c
 int stat(const char*, struct stat*);
